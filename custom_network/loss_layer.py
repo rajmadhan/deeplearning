@@ -11,15 +11,13 @@ class LossLayer(Layer):
         self.loss_func = loss_func
         self.loss = None
         self.dE_dz = None
+        self.dE_dy = None
 
     def compute_loss(self, y, labels):
 
         N = labels.shape[1]
         self.dE_dz = None
         
-        assert self.loss_func == 'cross_entropy', print('loss function not supported')
-        assert self.activation_fn == 'softmax', print('activation function not supported')
-
         # for cross entropy loss dE/dz is returned
         if self.loss_func == 'cross_entropy' and self.activation_fn == 'softmax':
             eps = 1e-6
@@ -27,10 +25,17 @@ class LossLayer(Layer):
             ce_error = -labels * np.log(y)
             self.loss = (1./N) * np.sum(ce_error)
             self.dE_dz = y - labels
+        
+        elif self.loss_func == 'mse' and self.activation_fn in ['linear', 'relu', 'sigmoid']:
+            self.loss = np.mean(0.5*np.square(y - labels))
+            self.dE_dy = y - labels
 
         return self.loss
     
     def backward(self, ignore):
+
+        if self.activation_fn != 'softmax':
+            return super().backward(self.dE_dy)
 
         # compute the gradient:
         # change in the network output wrt the change 

@@ -35,9 +35,12 @@ class Layer:
 
         if self.activation_fn == 'relu':
             self.y = np.where(self.z > 0, self.z, 0)
+        
+        elif self.activation_fn == 'linear':
+            self.y = self.z
 
         elif self.activation_fn == 'sigmoid':
-            self.y = 1./(1 + np.math.exp(-self.z))
+            self.y = 1./(1 + np.exp(-self.z))
         
         elif self.activation_fn == 'softmax':
             self.y = softmax(self.z, axis=0)
@@ -52,13 +55,20 @@ class Layer:
         # dE_dw = dz_dw * dy_dz * dE_dy
         # dE_dw = dz_dw * dE_dz
         if self.activation_fn == 'relu':
-            dy_dz = 1 #np.ones(self.y.shape, dtype=np.float32)
-        elif self.activation_fn == 'sigmod':
+            dy_dz = np.where(self.z > 0, 1.0, 0)
+        
+        elif self.activation_fn == 'linear':
+            dy_dz = 1 #np.ones(self.y.shape)
+        
+        elif self.activation_fn == 'sigmoid':
             dy_dz = self.y * (1 - self.y)
+        
         dE_dz = dy_dz * dE_dy
+        '''
         # softmax is only supported at the LossLayer
         # elif self.activation_fn == 'softmax':
         #     dE_dz = dE_dy
+        '''
         dz_dw = self.x
         N = self.x.shape[-1]
         self.grad = (1./N) * np.dot(dE_dz, np.transpose(dz_dw))
