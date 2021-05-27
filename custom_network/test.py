@@ -26,11 +26,15 @@ indices = np.arange(len(examples))
 for batch in range(n_batch):
 
     sample_idx = np.random.choice(indices, batch_size)
-    samples = np.transpose(np.reshape(examples[sample_idx], [-1, ip_size]))
-    gt = np.zeros((n_class, batch_size), dtype=np.float32)
-    gt[labels[sample_idx], np.arange(batch_size)] = 1
+    # samples = np.transpose(np.reshape(examples[sample_idx], [-1, ip_size]))
+    # gt = np.zeros((n_class, batch_size), dtype=np.float32)
+    # gt[labels[sample_idx], np.arange(batch_size)] = 1
 
-    pred = nw.forward(np.array(samples, dtype=np.float32))
+    samples = np.array(np.reshape(examples[sample_idx], [-1, ip_size]), dtype=np.float32)
+    gt = np.zeros((batch_size, n_class), dtype=np.float32)
+    gt[np.arange(batch_size), labels[sample_idx]] = 1
+
+    pred = nw.forward(samples)
     loss = nw.compute_loss(pred=pred, gt=gt)
     nw.backward()
     nw.apply_gradient()
@@ -42,21 +46,20 @@ nerrors = 0
 for batch in range(n_batch):
 
     sample_idx = np.random.choice(indices, batch_size)
-    samples = np.transpose(np.reshape(examples[sample_idx], [-1, ip_size]))
-    gt = np.zeros((n_class, batch_size), dtype=np.float32)
-    gt[labels[sample_idx], np.arange(batch_size)] = 1
+    samples = np.array(np.reshape(examples[sample_idx], [-1, ip_size]), dtype=np.float32)
+    gt = np.zeros((batch_size, n_class), dtype=np.float32)
+    gt[np.arange(batch_size), labels[sample_idx]] = 1
 
-    samples = np.array(samples, dtype=np.float32)
     pred = nw.forward(samples)
     loss = nw.compute_loss(pred=pred, gt=gt)
-    nerrors += np.count_nonzero(labels[sample_idx] - np.argmax(pred, axis=0))
+    nerrors += np.count_nonzero(labels[sample_idx] - np.argmax(pred, axis=-1))
 
     print('--------------------------------')
     print('batch: ', batch+1)
     print('loss: ', loss)
     # print('samples: ', samples)
     print('gt: ', labels[sample_idx])
-    print('pred: ', np.argmax(pred, axis=0))
+    print('pred: ', np.argmax(pred, axis=-1))
     print('--------------------------------')    
 
 n_examples = n_batch * batch_size

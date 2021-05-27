@@ -14,7 +14,7 @@ class LossLayer(Layer):
 
     def compute_loss(self, y, labels):
 
-        N = labels.shape[1]
+        N = labels.shape[0]
         self.dE_dz = None
         
         assert self.loss_func == 'cross_entropy', print('loss function not supported')
@@ -39,8 +39,8 @@ class LossLayer(Layer):
         # dE_dw = dz_dw * dE_dz
         dE_dz = self.dE_dz
         dz_dw = self.x
-        N = self.x.shape[-1]
-        self.grad = (1./N) * np.dot(dE_dz, np.transpose(dz_dw))
+        N = self.x.shape[0]
+        self.grad = (1./N) * np.dot(np.transpose(dz_dw), dE_dz)
 
         assert self.grad.shape == self.weights.shape
 
