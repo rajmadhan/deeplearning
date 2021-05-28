@@ -15,10 +15,10 @@ class Layer:
         # perform weight initialization based on the activation function
         # reference: https://machinelearningmastery.com/weight-initialization-for-deep-learning-neural-networks/
         if activation_fn == 'relu':
-            self.weights = np.math.sqrt(2/self.ip_dim) * np.random.randn(self.ip_dim + 1, self.n_neurons)
+            self.weights = np.math.sqrt(2/self.ip_dim) * np.random.randn(self.n_neurons, self.ip_dim + 1)
         else:
             lower, upper = -1.0/np.math.sqrt(self.ip_dim), 1.0/np.math.sqrt(self.ip_dim)
-            self.weights = lower + np.random.rand(self.ip_dim + 1, self.n_neurons) * (upper - lower)
+            self.weights = lower + np.random.rand(self.n_neurons, self.ip_dim + 1) * (upper - lower)
         self.grad = np.zeros(self.weights.shape)
         self.z = None
         self.y = None
@@ -30,17 +30,20 @@ class Layer:
     
     def forward(self, X):
 
-        self.x = np.hstack((X, np.ones((X.shape[0], 1), dtype=np.float32)))
-        self.z = np.dot(self.x, self.weights)
+        self.x = np.vstack((X, np.ones((1, X.shape[-1]), dtype=np.float32)))
+        self.z = np.dot(self.weights, self.x)
 
         if self.activation_fn == 'relu':
             self.y = np.where(self.z > 0, self.z, 0)
+        
+        elif self.activation_fn == 'linear':
+            self.y = self.z
 
         elif self.activation_fn == 'sigmoid':
-            self.y = 1./(1 + np.math.exp(-self.z))
+            self.y = 1./(1 + np.exp(-self.z))
         
         elif self.activation_fn == 'softmax':
-            self.y = softmax(self.z, axis=-1)
+            self.y = softmax(self.z, axis=0)
 
         return self.y
 
@@ -52,16 +55,23 @@ class Layer:
         # dE_dw = dz_dw * dy_dz * dE_dy
         # dE_dw = dz_dw * dE_dz
         if self.activation_fn == 'relu':
-            dy_dz = 1 #np.ones(self.y.shape, dtype=np.float32)
-        elif self.activation_fn == 'sigmod':
+            dy_dz = np.where(self.z > 0, 1.0, 0)
+        
+        elif self.activation_fn == 'linear':
+            dy_dz = 1 #np.ones(self.y.shape)
+        
+        elif self.activation_fn == 'sigmoid':
             dy_dz = self.y * (1 - self.y)
+        
         dE_dz = dy_dz * dE_dy
+        '''
         # softmax is only supported at the LossLayer
         # elif self.activation_fn == 'softmax':
         #     dE_dz = dE_dy
+        '''
         dz_dw = self.x
-        N = self.x.shape[0]
-        self.grad = (1./N) * np.dot(np.transpose(dz_dw), dE_dz)
+        N = self.x.shape[-1]
+        self.grad = (1./N) * np.dot(dE_dz, np.transpose(dz_dw))
 
         assert self.grad.shape == self.weights.shape
 
@@ -78,9 +88,9 @@ class Layer:
             dz_dx = self.weights
             # dy_dx = dz_dx * dy_dz
             # self.dE_dx = np.dot(dy_dx, dE_dx)
-            dE_dx = np.dot(dE_dz, np.transpose(dz_dx))
+            dE_dx = np.dot(np.transpose(dz_dx), dE_dz)
             
-            return np.delete(dE_dx, -1, -1)
+            return dE_dx[:-1]        
 
     def apply_gradient(self):
         
