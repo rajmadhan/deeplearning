@@ -122,10 +122,8 @@ class DecoderBlock(nn.Module):
         self.layernorm2 = nn.LayerNorm(n_embed)
     
     def __call__(self, x):
-        # x = x + self.sa_head(self.layernorm1(x))
-        # x = x + self.ffwd(self.layernorm1(x))
-        x = self.layernorm1(x + self.sa_head(x))
-        x = self.layernorm2(x + self.ffwd(x))
+        x = x + self.sa_head(self.layernorm1(x))
+        x = x + self.ffwd(self.layernorm2(x))
         return x
 
 class BigramLanguageModel(nn.Module):
