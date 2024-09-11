@@ -5,24 +5,44 @@ import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
-
+import time
+from datetime import datetime
 
 os.chdir(os.path.dirname(__file__))
 
 # hyper parameters
-batch_size = 4
-block_size = 8
-n_embed = 512
-num_head = 8
+batch_size = 64
+block_size = 256
+n_embed = 384
+num_head = 6
 n_decoder_blocks = 6
-max_iters = 10000
-eval_interval = 1000
-eval_iters = 25
-# max_iters = 10000
-# eval_interval = 1000
-# eval_iters = 250
-learning_rate = 1e-2
+max_iters = 5000
+eval_interval = 500
+eval_iters = 100
+learning_rate = 3e-4
+dropout = 0.2
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# batch_size = 64
+# block_size = 256
+# n_embed = 384
+# num_head = 6
+# n_decoder_blocks = 6
+# max_iters = 1000
+# eval_interval = 100
+# eval_iters = 100
+# learning_rate = 3e-4
+# dropout = 0.2
+
+# batch_size = 64
+# block_size = 256
+# n_embed = 384
+# num_head = 1
+# n_decoder_blocks = 1
+# max_iters = 1000
+# eval_interval = 100
+# eval_iters = 250
+# learning_rate = 1e-3
 
 torch.manual_seed(1337)
 
@@ -51,6 +71,7 @@ class SelfAttentionHead(nn.Module):
         self.key = nn.Linear(n_embed, headsize, bias=False)
         self.value = nn.Linear(n_embed, headsize, bias=False)
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        self.dropout = nn.Dropout(dropout)
     
     def __call__(self, x) -> torch.tensor: # x: BTC
         B, T, C = x.shape
@@ -59,6 +80,7 @@ class SelfAttentionHead(nn.Module):
         wt = q @ k.transpose(-1, -2) * C**-0.5 # BTT
         wt = wt.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wt = F.softmax(wt, dim=-1) # BTT
+        wt = self.dropout(wt)
         v = self.value(x) # BTC
         out = wt @ v # BTC
         return out
@@ -69,10 +91,12 @@ class SelfAttentionMultihead(nn.Module):
         head_size = n_embed // num_head
         self.heads = nn.ModuleList([SelfAttentionHead(n_embed, head_size) for _ in range(num_head)])
         self.proj = nn.Linear(n_embed, n_embed)
+        self.dropout = nn.Dropout(dropout)
     
     def __call__(self, x):
         out = torch.cat([head(x) for head in self.heads], dim=-1)
         out = self.proj(out)
+        out = self.dropout(out)
         return out
     
 class FeedForward(nn.Module):
@@ -81,7 +105,8 @@ class FeedForward(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(fanin, middle, bias=True),
             nn.ReLU(),
-            nn.Linear(middle, fanout, bias=True)
+            nn.Linear(middle, fanout, bias=True),
+            nn.Dropout(dropout),
         )
     
     def __call__(self, x):
@@ -97,10 +122,10 @@ class DecoderBlock(nn.Module):
         self.layernorm2 = nn.LayerNorm(n_embed)
     
     def __call__(self, x):
-        x = x + self.sa_head(x)
-        x = self.layernorm1(x)
-        x = x + self.ffwd(x)
-        x = self.layernorm2(x)
+        # x = x + self.sa_head(self.layernorm1(x))
+        # x = x + self.ffwd(self.layernorm1(x))
+        x = self.layernorm1(x + self.sa_head(x))
+        x = self.layernorm2(x + self.ffwd(x))
         return x
 
 class BigramLanguageModel(nn.Module):
@@ -163,10 +188,14 @@ def estimate_loss():
 model = BigramLanguageModel(vocab_size).to(device)
 optim = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.001)
 
+start_time = time.time()
 for iter in range(max_iters):
     if iter%eval_interval == 0 or iter == max_iters-1:
         losses = estimate_loss()
-        print(f'step {iter}: train loss {losses['train'].item(): .4f}, val loss {losses['val'].item(): .4f}')
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        start_time = end_time
+        print(f'step {iter}: train loss {losses['train'].item(): .4f}, val loss {losses['val'].item(): .4f}, time {elapsed_time: .3f}')
 
     x, y = get_batch('train')
     logits = model(x)
@@ -175,7 +204,7 @@ for iter in range(max_iters):
     loss.backward()
     optim.step()
 
-torch.save(model, 'gpt-01.pt')
+torch.save(model, 'gpt-01-' + datetime.now().strftime('%Y-%m-%d-%H-%M-%S') + '.pt')
 # generate from the model
 context = torch.zeros((1,1), dtype=torch.long, device=device)
-print(decode(model.generate(context, 500)[0].tolist()))
+#print(decode(model.generate(context, 500)[0].tolist()))
