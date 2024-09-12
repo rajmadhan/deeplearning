@@ -1,0 +1,48 @@
+LR: 3e-4
+x = x + self.sa_head(self.layernorm1(x))
+x = x + self.ffwd(self.layernorm1(x))
+==============
+step 0: train loss  4.4749, val loss  4.4705, time  17.430
+step 500: train loss  2.0860, val loss  2.1459, time  164.798
+step 1000: train loss  1.6669, val loss  1.8294, time  164.246
+step 1500: train loss  1.4940, val loss  1.6883, time  162.066
+step 2000: train loss  1.3923, val loss  1.6131, time  163.106
+step 2500: train loss  1.3220, val loss  1.5535, time  163.769
+step 3000: train loss  1.2671, val loss  1.5140, time  164.894
+step 3500: train loss  1.2175, val loss  1.4995, time  164.387
+step 4000: train loss  1.1803, val loss  1.4880, time  165.111
+step 4500: train loss  1.1407, val loss  1.4836, time  163.800
+step 4999: train loss  1.1073, val loss  1.4837, time  163.292
+
+
+LR: 3e-4
+x = self.layernorm1(x + self.sa_head(x))
+x = self.layernorm2(x + self.ffwd(x))
+====================
+step 0: train loss  4.2930, val loss  4.2894, time  17.450
+step 500: train loss  1.9416, val loss  2.0377, time  165.091
+step 1000: train loss  1.5283, val loss  1.7107, time  163.997
+step 1500: train loss  1.3798, val loss  1.5923, time  164.718
+step 2000: train loss  1.2893, val loss  1.5348, time  163.835
+step 2500: train loss  1.2322, val loss  1.5068, time  163.570
+step 3000: train loss  1.1795, val loss  1.4888, time  164.396
+step 3500: train loss  1.1336, val loss  1.4752, time  163.724
+step 4000: train loss  1.0977, val loss  1.4908, time  165.818
+step 4500: train loss  1.0562, val loss  1.4987, time  163.749
+step 4999: train loss  1.0170, val loss  1.4954, time  163.567
+
+LR: 3e-4
+x = x + self.sa_head(self.relu1(self.layernorm1(x)))
+x = x + self.ffwd(self.relu2(self.layernorm2(x)))
+====================
+step 0: train loss  4.4208, val loss  4.4228, time  17.735
+step 500: train loss  2.3335, val loss  2.3651, time  167.488
+step 1000: train loss  1.9602, val loss  2.0548, time  167.271
+step 1500: train loss  1.7446, val loss  1.8911, time  165.624
+step 2000: train loss  1.6021, val loss  1.7780, time  165.774
+step 2500: train loss  1.5097, val loss  1.7015, time  165.921
+step 3000: train loss  1.4416, val loss  1.6419, time  163.863
+step 3500: train loss  1.3834, val loss  1.6069, time  163.596
+step 4000: train loss  1.3414, val loss  1.5746, time  166.537
+step 4500: train loss  1.3000, val loss  1.5544, time  166.949
+step 4999: train loss  1.2737, val loss  1.5341, time  167.443
