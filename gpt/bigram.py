@@ -17,9 +17,9 @@ n_embed = 64
 # eval_interval = 100
 # eval_iters = 25
 max_iters = 10000
-eval_interval = 1000
+eval_interval = 500
 eval_iters = 250
-learning_rate = 1e-2
+learning_rate = 1e-3
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 torch.manual_seed(1337)
