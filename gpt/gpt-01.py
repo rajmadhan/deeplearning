@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 import time
 from datetime import datetime
 
@@ -63,6 +64,9 @@ val_data = data[int(0.9*len(data)):]
 print('train size: ', len(train_data))
 print('val size: ', len(val_data))
 
+def new_gelu(x):
+    return 0.5 * x * (1.0 + torch.tanh(math.sqrt(2.0/math.pi) * (x + 0.044715 * torch.pow(x, 3.0))))
+
 
 class SelfAttentionHead(nn.Module):
     def __init__(self, n_embed, headsize) -> None:
@@ -73,19 +77,19 @@ class SelfAttentionHead(nn.Module):
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
         self.dropout = nn.Dropout(dropout)
     
-    def forward(self, x) -> torch.tensor: # x: BTC
+    def forward(self, x) -> torch.tensor: # x: 
         B, T, C = x.shape
-        q = self.query(x) # BTC
-        k = self.key(x) # BTC        
+        q = self.query(x) # 
+        k = self.key(x) #         
         wt = q @ k.transpose(-1, -2) * C**-0.5 # BTT
         wt = wt.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wt = F.softmax(wt, dim=-1) # BTT
         wt = self.dropout(wt)
-        v = self.value(x) # BTC
-        out = wt @ v # BTC
+        v = self.value(x) # 
+        out = wt @ v # 
         return out
 
-class SelfAttentionMultihead(nn.Module):
+class SelfAttentionMultiheadVer1(nn.Module):
     def __init__(self, n_embed, num_head):
         super().__init__()
         head_size = n_embed // num_head
@@ -98,7 +102,34 @@ class SelfAttentionMultihead(nn.Module):
         out = self.proj(out)
         out = self.dropout(out)
         return out
+
+class SelfAttentionMultihead(nn.Module):
+    def __init__(self, n_embed, num_head) -> None:
+        super().__init__()
+        self.c_attn = nn.Linear(n_embed, 3*n_embed)
+        self.c_proj = nn.Linear(n_embed, n_embed)
+        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        self.attn_dropout = nn.Dropout(dropout)
+        self.resid_dropout = nn.Dropout(dropout)
+        self.n_embed = n_embed
+        self.n_head = num_head
     
+    def forward(self, x) -> torch.tensor: # x: 
+        B, T, C = x.shape # C == n_embed
+        attn = self.c_attn(x) # B, T, 3C
+        q, k, v = attn.split(self.n_embed, dim=-1) # B, T, C
+        q = q.view(B, T, self.n_head, C//self.n_head).transpose(1, 2) # B, nh, T, hs(head size)
+        k = k.view(B, T, self.n_head, C//self.n_head).transpose(1, 2) # B, nh, T, hs 
+        v = v.view(B, T, self.n_head, C//self.n_head).transpose(1, 2) # B, nh, T, hs 
+        wt = q @ k.transpose(-1, -2) * k.size(-1)**-0.5 # B, nh, T, T
+        wt = wt.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        wt = F.softmax(wt, dim=-1) # BTT
+        wt = self.attn_dropout(wt)
+        out = wt @ v # B, nh, T, hs
+        out = out.transpose(1,2).contiguous().view(B, T, C)
+        out = self.resid_dropout(self.c_proj(out))
+        return out
+   
 class FeedForward(nn.Module):
     def __init__(self, fanin, middle, fanout):
         super().__init__()
@@ -112,18 +143,34 @@ class FeedForward(nn.Module):
     def forward(self, x):
         out = self.net(x)
         return out
+
+class MLP(nn.Module):
+    def __init__(self, fanin, middle, fanout):
+        super().__init__()
+        self.fc = nn.Linear(fanin, middle)
+        self.proj = nn.Linear(middle, fanout)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        x = self.fc(x)
+        x = new_gelu(x)
+        x = self.proj(x)
+        x = self.dropout(x)
+        return x
     
 class DecoderBlock(nn.Module):
     def __init__(self, n_embed, num_head):
         super().__init__()
-        self.sa_head = SelfAttentionMultihead(n_embed, num_head)        
-        self.ffwd = FeedForward(n_embed, 4*n_embed, n_embed)
         self.layernorm1 = nn.LayerNorm(n_embed)
+        self.attn = SelfAttentionMultihead(n_embed, num_head)        
         self.layernorm2 = nn.LayerNorm(n_embed)
+        #self.ffwd = FeedForward(n_embed, 4*n_embed, n_embed)
+        self.mlp = MLP(n_embed, 4*n_embed, n_embed)
     
     def forward(self, x):
-        x = x + self.sa_head(self.layernorm1(x))
-        x = x + self.ffwd(self.layernorm2(x))
+        x = x + self.attn(self.layernorm1(x))
+        #x = x + self.ffwd(self.layernorm2(x))
+        x = x + self.mlp(self.layernorm2(x))
         return x
 
 class BigramLanguageModel(nn.Module):
