@@ -46,3 +46,17 @@ step 3500: train loss  1.3834, val loss  1.6069, time  163.596
 step 4000: train loss  1.3414, val loss  1.5746, time  166.537
 step 4500: train loss  1.3000, val loss  1.5544, time  166.949
 step 4999: train loss  1.2737, val loss  1.5341, time  167.443
+
+Final model:
+using gelu, mlp layer (in self attention)
+step 0: train loss  4.5329, val loss  4.5198, time  42.538
+step 500: train loss  1.8470, val loss  1.9646, time  188.760
+step 1000: train loss  1.5379, val loss  1.7206, time  188.962
+step 1500: train loss  1.3981, val loss  1.6087, time  186.001
+step 2000: train loss  1.3093, val loss  1.5470, time  188.666
+step 2500: train loss  1.2505, val loss  1.5108, time  189.130
+step 3000: train loss  1.1975, val loss  1.4822, time  188.404
+step 3500: train loss  1.1553, val loss  1.4854, time  188.756
+step 4000: train loss  1.1116, val loss  1.4807, time  185.944
+step 4500: train loss  1.0712, val loss  1.4853, time  185.997
+step 4999: train loss  1.0288, val loss  1.4918, time  185.827
