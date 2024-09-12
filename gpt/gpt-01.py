@@ -73,7 +73,7 @@ class SelfAttentionHead(nn.Module):
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
         self.dropout = nn.Dropout(dropout)
     
-    def __call__(self, x) -> torch.tensor: # x: BTC
+    def forward(self, x) -> torch.tensor: # x: BTC
         B, T, C = x.shape
         q = self.query(x) # BTC
         k = self.key(x) # BTC        
@@ -93,7 +93,7 @@ class SelfAttentionMultihead(nn.Module):
         self.proj = nn.Linear(n_embed, n_embed)
         self.dropout = nn.Dropout(dropout)
     
-    def __call__(self, x):
+    def forward(self, x):
         out = torch.cat([head(x) for head in self.heads], dim=-1)
         out = self.proj(out)
         out = self.dropout(out)
@@ -109,7 +109,7 @@ class FeedForward(nn.Module):
             nn.Dropout(dropout),
         )
     
-    def __call__(self, x):
+    def forward(self, x):
         out = self.net(x)
         return out
     
@@ -121,7 +121,7 @@ class DecoderBlock(nn.Module):
         self.layernorm1 = nn.LayerNorm(n_embed)
         self.layernorm2 = nn.LayerNorm(n_embed)
     
-    def __call__(self, x):
+    def forward(self, x):
         x = x + self.sa_head(self.layernorm1(x))
         x = x + self.ffwd(self.layernorm2(x))
         return x
