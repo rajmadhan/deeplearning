@@ -233,6 +233,8 @@ def estimate_loss():
 model = BigramLanguageModel(vocab_size).to(device)
 optim = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.001)
 
+print('# parameters: ', sum(p.numel() for p in model.parameters())/1e6, 'M')
+
 start_time = time.time()
 for iter in range(max_iters):
     if iter%eval_interval == 0 or iter == max_iters-1:
