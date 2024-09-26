@@ -1,6 +1,8 @@
 import torch
 from model import GPT, GPTConfig
 from dataloader import DataLoaderLite
+from datetime import datetime
+import time
 
 if __name__ == "__main__":
     device = "cpu"
@@ -14,6 +16,8 @@ if __name__ == "__main__":
     model.to(device)
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+
+    start_time = time.time()
     for i in range(500):
         optimizer.zero_grad()
         x, y = dataloader.next_batch()
@@ -22,3 +26,7 @@ if __name__ == "__main__":
         loss.backward()
         optimizer.step()
         print(f"step: {i}, loss: {loss.item(): .6f}")
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"elapsed time: {elapsed_time: .3f}")
