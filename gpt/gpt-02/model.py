@@ -79,6 +79,20 @@ class GPT(nn.Module):
             ln_f = nn.LayerNorm(config.n_embd),
         ))
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+
+        # weight sharing scheme
+        self.transformer.wte.weight = self.lm_head.weight
+
+        # init parameters
+        self.apply(self._init_weight)
+
+    def _init_weight(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
     
     def forward(self, idx, targets):
         B, T = idx.shape
@@ -156,7 +170,7 @@ if __name__ == "__main__":
     device = "cpu"
     if torch.cuda.is_available():
         device = "cuda"
-    
+
     import tiktoken
     enc = tiktoken.get_encoding('gpt2')
     text = open('gpt/tiny-shakespeare.txt', 'r', encoding='utf-8').read()
@@ -167,12 +181,12 @@ if __name__ == "__main__":
     buf = torch.tensor(tokens[:B*T + 1], device=device)
     x = buf[:-1].view(B, T)
     y = buf[1:].view(B, T)
-    
+
     #model = GPT.from_pretrained('gpt2')
     model = GPT(GPTConfig())
     print('all good')
     model.to(device)
-    
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
     for i in range(50):
         optimizer.zero_grad()
@@ -180,23 +194,23 @@ if __name__ == "__main__":
         loss.backward()
         optimizer.step()
         print(f"step: {i}, loss: {loss.item(): .6f}")
-    
+
     print(loss)
     import sys; sys.exit(0)
-    
+
     model.eval()
     model.to(device)
-    
+
     num_return_sequences = 5
     max_length = 30
-    
+
     import tiktoken
     enc = tiktoken.get_encoding('gpt2')
     tokens = enc.encode("Hello, I'm a language model,")
     tokens = torch.tensor(tokens, dtype=torch.long)
     tokens = tokens.unsqueeze(0).repeat(num_return_sequences, 1)
     x = tokens.to(device)
-    
+
     torch.manual_seed(42)
     torch.cuda.manual_seed(42)
     while x.size(1) < max_length:
@@ -208,9 +222,8 @@ if __name__ == "__main__":
             ix = torch.multinomial(topk_probs, 1)
             xcol = torch.gather(topk_indices, -1, ix)
             x = torch.cat((x, xcol), dim=1)
-    
+
     for i in range(num_return_sequences):
         tokens = x[i,:max_length].tolist()
         decoded = enc.decode(tokens)
         print(">", decoded)
-    
