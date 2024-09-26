@@ -80,7 +80,7 @@ class GPT(nn.Module):
         ))
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
     
-    def forward(self, idx):
+    def forward(self, idx, targets):
         B, T = idx.shape
         pos = torch.arange(0, T, dtype=torch.long, device=idx.device)
         pos_emb = self.transformer.wpe(pos)
@@ -90,7 +90,10 @@ class GPT(nn.Module):
             x = block(x)
         x = self.transformer.ln_f(x)
         logits = self.lm_head(x)
-        return logits
+        loss = None
+        if targets is not None:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+        return logits, loss
     
     @classmethod
     def from_pretrained(cls, model_type, override_args=None):
@@ -149,13 +152,36 @@ class GPT(nn.Module):
 
         return model
 
-model = GPT.from_pretrained('gpt2')
-#model = GPT(GPTConfig())
-print('all good')
-
 device = "cpu"
 if torch.cuda.is_available():
     device = "cuda"
+
+import tiktoken
+enc = tiktoken.get_encoding('gpt2')
+text = open('gpt/tiny-shakespeare.txt', 'r', encoding='utf-8').read()
+print('dataset len: ', len(text))
+text = text[:1000]
+tokens = enc.encode(text)
+B, T = 4, 32
+buf = torch.tensor(tokens[:B*T + 1], device=device)
+x = buf[:-1].view(B, T)
+y = buf[1:].view(B, T)
+
+#model = GPT.from_pretrained('gpt2')
+model = GPT(GPTConfig())
+print('all good')
+model.to(device)
+
+optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+for i in range(50):
+    optimizer.zero_grad()
+    logits, loss = model(x, y)
+    loss.backward()
+    optimizer.step()
+    print(f"step: {i}, loss: {loss.item(): .6f}")
+
+print(loss)
+import sys; sys.exit(0)
 
 model.eval()
 model.to(device)
