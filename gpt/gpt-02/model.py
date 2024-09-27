@@ -31,11 +31,13 @@ class CausalSelfAttention(nn.Module):
         q,k,v = qkv.split(C, dim=-1) # B, T, C
         q = q.view(B, T, self.n_head, C//self.n_head).transpose(1,2) # B, nh, T, hs(head size)
         k = k.view(B, T, self.n_head, C//self.n_head).transpose(1,2) # B, nh, T, hs
-        wt = q @ k.transpose(-1,-2) / math.sqrt(k.size(-1)) # B, nh, T, T
-        wt = wt.masked_fill(self.bias[:T, :T] == 0, float("-inf"))
-        wt = F.softmax(wt, dim=-1)
         v = v.view(B, T, self.n_head, C//self.n_head).transpose(1,2) # B, hs, T, hs
-        out = wt @ v # B, nh, T, hs
+        
+        attn = q @ k.transpose(-1,-2) / math.sqrt(k.size(-1)) # B, nh, T, T
+        attn = attn.masked_fill(self.bias[:T, :T] == 0, float("-inf"))
+        attn = F.softmax(attn, dim=-1)        
+        out = attn @ v # B, nh, T, hs        
+
         out = out.transpose(1,2).contiguous().view(B, T, C) # B, T, C
         out = self.c_proj(out) # B, T, C
         return out
