@@ -18,6 +18,11 @@ if __name__ == "__main__":
     #model = GPT.from_pretrained('gpt2')
     model = GPT(GPTConfig(block_size=T))
     model.to(device)
+    t0 = time.time()
+    model = torch.compile(model)
+    t1 = time.time()
+    td = (t1 - t0)*1000
+    print(f"model compile time: {td: .2f}ms")
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
 
